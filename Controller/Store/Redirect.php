@@ -7,26 +7,19 @@ declare(strict_types=1);
 
 namespace Magento\Store\Controller\Store;
 
-use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
-use Magento\Framework\App\Action\HttpGetActionInterface;
-use Magento\Framework\App\Action\HttpPostActionInterface;
-use Magento\Framework\App\ActionInterface;
-use Magento\Framework\App\ObjectManager;
+use Magento\Framework\App\ResponseInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\Session\Generic;
-use Magento\Framework\Session\SidResolverInterface;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Api\StoreResolverInterface;
-use Magento\Store\Model\Store;
-use Magento\Store\Model\StoreManagerInterface;
 use Magento\Store\Model\StoreResolver;
-use Magento\Store\Model\StoreSwitcher\HashGenerator;
+use Magento\Framework\Session\SidResolverInterface;
+use Magento\Framework\Session\Generic as Session;
 
 /**
- * Builds correct url to target store (group) and performs redirect.
+ * Builds correct url to target store and performs redirect.
  */
-class Redirect extends Action implements HttpGetActionInterface, HttpPostActionInterface
+class Redirect extends \Magento\Framework\App\Action\Action
 {
     /**
      * @var StoreRepositoryInterface
@@ -39,49 +32,43 @@ class Redirect extends Action implements HttpGetActionInterface, HttpPostActionI
     private $storeResolver;
 
     /**
-     * @var HashGenerator
+     * @var SidResolverInterface
      */
-    private $hashGenerator;
+    private $sidResolver;
 
     /**
-     * @var StoreManagerInterface
+     * @var Session
      */
-    private $storeManager;
+    private $session;
 
     /**
      * @param Context $context
      * @param StoreRepositoryInterface $storeRepository
      * @param StoreResolverInterface $storeResolver
-     * @param Generic $session
+     * @param Session $session
      * @param SidResolverInterface $sidResolver
-     * @param HashGenerator $hashGenerator
-     * @param StoreManagerInterface $storeManager
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function __construct(
         Context $context,
         StoreRepositoryInterface $storeRepository,
         StoreResolverInterface $storeResolver,
-        Generic $session,
-        SidResolverInterface $sidResolver,
-        HashGenerator $hashGenerator,
-        StoreManagerInterface $storeManager = null
+        Session $session,
+        SidResolverInterface $sidResolver
     ) {
         parent::__construct($context);
         $this->storeRepository = $storeRepository;
         $this->storeResolver = $storeResolver;
-        $this->hashGenerator = $hashGenerator;
-        $this->storeManager = $storeManager ?: ObjectManager::getInstance()->get(StoreManagerInterface::class);
+        $this->session = $session;
+        $this->sidResolver = $sidResolver;
     }
 
     /**
-     * @inheritDoc
-     *
+     * @return ResponseInterface|\Magento\Framework\Controller\ResultInterface
      * @throws NoSuchEntityException
      */
     public function execute()
     {
-        /** @var Store $currentStore */
+        /** @var \Magento\Store\Model\Store $currentStore */
         $currentStore = $this->storeRepository->getById($this->storeResolver->getCurrentStoreId());
         $targetStoreCode = $this->_request->getParam(StoreResolver::PARAM_NAME);
         $fromStoreCode = $this->_request->getParam('___from_store');
@@ -92,37 +79,35 @@ class Redirect extends Action implements HttpGetActionInterface, HttpPostActionI
         }
 
         try {
-            /** @var Store $fromStore */
+            /** @var \Magento\Store\Model\Store $targetStore */
             $fromStore = $this->storeRepository->get($fromStoreCode);
-            /** @var Store $targetStore */
-            $targetStore = $this->storeRepository->get($targetStoreCode);
-            $this->storeManager->setCurrentStore($targetStore);
         } catch (NoSuchEntityException $e) {
-            $error = __("Requested store is not found ({$fromStoreCode})");
+            $error = __('Requested store is not found');
         }
 
         if ($error !== null) {
             $this->messageManager->addErrorMessage($error);
             $this->_redirect->redirect($this->_response, $currentStore->getBaseUrl());
         } else {
-            $encodedUrl = $this->_request->getParam(ActionInterface::PARAM_NAME_URL_ENCODED);
+            $encodedUrl = $this->_request->getParam(\Magento\Framework\App\ActionInterface::PARAM_NAME_URL_ENCODED);
+
             $query = [
                 '___from_store' => $fromStore->getCode(),
                 StoreResolverInterface::PARAM_NAME => $targetStoreCode,
-                ActionInterface::PARAM_NAME_URL_ENCODED => $encodedUrl,
+                \Magento\Framework\App\ActionInterface::PARAM_NAME_URL_ENCODED => $encodedUrl,
             ];
 
-            $customerHash = $this->hashGenerator->generateHash($fromStore);
-            $query = array_merge($query, $customerHash);
+            if ($this->sidResolver->getUseSessionInUrl()) {
+                // allow customers to stay logged in during store switching
+                $sidName = $this->sidResolver->getSessionIdQueryParam($this->session);
+                $query[$sidName] = $this->session->getSessionId();
+            }
 
             $arguments = [
                 '_nosid' => true,
                 '_query' => $query
             ];
-
             $this->_redirect->redirect($this->_response, 'stores/store/switch', $arguments);
         }
-
-        return null;
     }
 }

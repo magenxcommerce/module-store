@@ -3,58 +3,33 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\Store\Test\Unit\Model;
 
-use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Api\Data\WebsiteInterface;
 use Magento\Store\Api\Data\GroupInterface;
 use Magento\Store\Api\Data\StoreInterface;
-use Magento\Store\Api\Data\WebsiteInterface;
-use Magento\Store\Api\GroupRepositoryInterface;
-use Magento\Store\Api\StoreRepositoryInterface;
-use Magento\Store\Api\WebsiteRepositoryInterface;
-use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\Group;
 use Magento\Store\Model\ScopeTreeProvider;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use Magento\Store\Model\Store;
+use Magento\Store\Model\StoreManagerInterface;
+use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Model\Website;
 
-/**
- * @covers \Magento\Store\Model\ScopeTreeProvider
- */
-class ScopeTreeProviderTest extends TestCase
+class ScopeTreeProviderTest extends \PHPUnit\Framework\TestCase
 {
-    /**
-     * @var ScopeTreeProvider
-     */
-    private $model;
+    /** @var ScopeTreeProvider */
+    protected $model;
 
-    /**
-     * @var MockObject|WebsiteRepositoryInterface
-     */
-    private $websiteRepositoryMock;
+    /** @var StoreManagerInterface|\PHPUnit_Framework_MockObject_MockObject */
+    protected $storeManagerMock;
 
-    /**
-     * @var MockObject|GroupRepositoryInterface
-     */
-    private $groupRepositoryMock;
-
-    /**
-     * @var MockObject|StoreRepositoryInterface
-     */
-    private $storeRepositoryMock;
-
-    protected function setUp(): void
+    protected function setUp()
     {
-        $this->websiteRepositoryMock = $this->getMockForAbstractClass(WebsiteRepositoryInterface::class);
-        $this->groupRepositoryMock = $this->getMockForAbstractClass(GroupRepositoryInterface::class);
-        $this->storeRepositoryMock = $this->getMockForAbstractClass(StoreRepositoryInterface::class);
+        $this->storeManagerMock = $this->getMockBuilder(\Magento\Store\Model\StoreManagerInterface::class)
+            ->getMockForAbstractClass();
 
-        $this->model = new ScopeTreeProvider(
-            $this->websiteRepositoryMock,
-            $this->groupRepositoryMock,
-            $this->storeRepositoryMock
-        );
+        $this->model = new ScopeTreeProvider($this->storeManagerMock);
     }
 
     public function testGet()
@@ -83,34 +58,40 @@ class ScopeTreeProviderTest extends TestCase
             'scopes' => [$websiteData],
         ];
 
-        $websiteMock = $this->getMockForAbstractClass(WebsiteInterface::class);
-        $websiteMock->expects($this->atLeastOnce())
+        /** @var Website|\PHPUnit_Framework_MockObject_MockObject $websiteMock */
+        $websiteMock = $this->getMockBuilder(\Magento\Store\Model\Website::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $websiteMock->expects($this->any())
             ->method('getId')
             ->willReturn($websiteId);
-        $this->websiteRepositoryMock->expects($this->once())
-            ->method('getList')
-            ->willReturn([$websiteMock]);
 
-        $groupMock = $this->getMockForAbstractClass(GroupInterface::class);
-        $groupMock->expects($this->atLeastOnce())
+        /** @var Group|\PHPUnit_Framework_MockObject_MockObject $groupMock */
+        $groupMock = $this->getMockBuilder(\Magento\Store\Model\Group::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $groupMock->expects($this->any())
             ->method('getId')
             ->willReturn($groupId);
-        $groupMock->expects($this->atLeastOnce())
-            ->method('getWebsiteId')
-            ->willReturn($websiteId);
-        $this->groupRepositoryMock->expects($this->once())
-            ->method('getList')
-            ->willReturn([$groupMock, $groupMock]);
 
-        $storeMock = $this->getMockForAbstractClass(StoreInterface::class);
-        $storeMock->expects($this->atLeastOnce())
+        /** @var Store|\PHPUnit_Framework_MockObject_MockObject $storeMock */
+        $storeMock = $this->getMockBuilder(\Magento\Store\Model\Store::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $storeMock->expects($this->any())
             ->method('getId')
             ->willReturn($storeId);
-        $storeMock->expects($this->atLeastOnce())
-            ->method('getStoreGroupId')
-            ->willReturn($groupId);
-        $this->storeRepositoryMock->expects($this->once())
-            ->method('getList')
+
+        $this->storeManagerMock->expects($this->any())
+            ->method('getWebsites')
+            ->willReturn([$websiteMock]);
+
+        $websiteMock->expects($this->any())
+            ->method('getGroups')
+            ->willReturn([$groupMock, $groupMock]);
+
+        $groupMock->expects($this->any())
+            ->method('getStores')
             ->willReturn([$storeMock, $storeMock, $storeMock]);
 
         $this->assertEquals($result, $this->model->get());

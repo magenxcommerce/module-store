@@ -3,12 +3,9 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\Store\Test\Unit\Model\Config\Importer\Processor;
 
 use Magento\Framework\Event\ManagerInterface;
-use Magento\Framework\Exception\RuntimeException;
 use Magento\Framework\Model\ResourceModel\Db\AbstractDb;
 use Magento\Store\Model\Config\Importer\DataDifferenceCalculator;
 use Magento\Store\Model\Config\Importer\Processor\Create;
@@ -19,57 +16,55 @@ use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreFactory;
 use Magento\Store\Model\Website;
 use Magento\Store\Model\WebsiteFactory;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
 
 /**
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  * @SuppressWarnings(PHPMD.TooManyFields)
  */
-class CreateTest extends TestCase
+class CreateTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var DataDifferenceCalculator|MockObject
+     * @var DataDifferenceCalculator|\PHPUnit_Framework_MockObject_MockObject
      */
     private $dataDifferenceCalculatorMock;
 
     /**
-     * @var WebsiteFactory|MockObject
+     * @var WebsiteFactory|\PHPUnit_Framework_MockObject_MockObject
      */
     private $websiteFactoryMock;
 
     /**
-     * @var GroupFactory|MockObject
+     * @var GroupFactory|\PHPUnit_Framework_MockObject_MockObject
      */
     private $groupFactoryMock;
 
     /**
-     * @var StoreFactory|MockObject
+     * @var StoreFactory|\PHPUnit_Framework_MockObject_MockObject
      */
     private $storeFactoryMock;
 
     /**
-     * @var ManagerInterface|MockObject
+     * @var ManagerInterface|\PHPUnit_Framework_MockObject_MockObject
      */
     private $eventManagerMock;
 
     /**
-     * @var AbstractDb|MockObject
+     * @var AbstractDb|\PHPUnit_Framework_MockObject_MockObject
      */
     private $abstractDbMock;
 
     /**
-     * @var Website|MockObject
+     * @var Website|\PHPUnit_Framework_MockObject_MockObject
      */
     private $websiteMock;
 
     /**
-     * @var Group|MockObject
+     * @var Group|\PHPUnit_Framework_MockObject_MockObject
      */
     private $groupMock;
 
     /**
-     * @var Store|MockObject
+     * @var Store|\PHPUnit_Framework_MockObject_MockObject
      */
     private $storeMock;
 
@@ -116,7 +111,7 @@ class CreateTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->initTestData();
 
@@ -201,30 +196,14 @@ class CreateTest extends TestCase
                 'root_category_id' => '1',
                 'default_store_id' => '1',
                 'code' => 'default',
-            ],
-            2 => [
-                'group_id' => '1',
-                'website_id' => '1',
-                'name' => 'Default1',
-                'default_store_id' => '1',
-                'code' => 'default1',
             ]
         ];
-        $this->trimmedGroup =
-            [
-                0 => [
-                    'name' => 'Default',
-                    'root_category_id' => '1',
-                    'code' => 'default',
-                    'default_store_id' => '1',
-                ],
-                1 => [
-                    'name' => 'Default1',
-                    'root_category_id' => '0',
-                    'code' => 'default1',
-                    'default_store_id' => '1'
-                ]
-            ];
+        $this->trimmedGroup = [
+            'name' => 'Default',
+            'root_category_id' => '1',
+            'code' => 'default',
+            'default_store_id' => '1',
+        ];
         $this->stores = [
             'default' => [
                 'store_id' => '1',
@@ -301,34 +280,34 @@ class CreateTest extends TestCase
                 [ScopeInterface::SCOPE_GROUPS, $this->groups, $this->groups],
             ]);
 
-        $this->websiteMock->expects($this->exactly(2))
+        $this->websiteMock->expects($this->once())
             ->method('getResource')
             ->willReturn($this->abstractDbMock);
 
-        $this->groupMock->expects($this->exactly(2))
+        $this->groupMock->expects($this->once())
             ->method('setData')
-            ->withConsecutive(
-                [$this->equalTo($this->trimmedGroup[0])],
-                [$this->equalTo($this->trimmedGroup[1])]
-            )->willReturnSelf();
-
-        $this->groupMock->expects($this->exactly(6))
+            ->with($this->trimmedGroup)
+            ->willReturnSelf();
+        $this->groupMock->expects($this->exactly(3))
             ->method('getResource')
             ->willReturn($this->abstractDbMock);
-        $this->groupMock->expects($this->exactly(2))
+        $this->groupMock->expects($this->once())
+            ->method('setRootCategoryId')
+            ->with(0);
+        $this->groupMock->expects($this->once())
             ->method('getDefaultStoreId')
             ->willReturn($defaultStoreId);
-        $this->groupMock->expects($this->exactly(2))
+        $this->groupMock->expects($this->once())
             ->method('setDefaultStoreId')
             ->with($storeId);
-        $this->groupMock->expects($this->exactly(2))
+        $this->groupMock->expects($this->once())
             ->method('setWebsite')
             ->with($this->websiteMock);
 
-        $this->storeMock->expects($this->exactly(2))
+        $this->storeMock->expects($this->once())
             ->method('getResource')
             ->willReturn($this->abstractDbMock);
-        $this->storeMock->expects($this->exactly(2))
+        $this->storeMock->expects($this->once())
             ->method('getStoreId')
             ->willReturn($storeId);
 
@@ -336,11 +315,11 @@ class CreateTest extends TestCase
             ->method('load')
             ->withConsecutive([$this->websiteMock, 'base', 'code'], [$this->storeMock, 'default', 'code'])
             ->willReturnSelf();
-        $this->abstractDbMock->expects($this->exactly(4))
+        $this->abstractDbMock->expects($this->exactly(2))
             ->method('save')
             ->with($this->groupMock)
             ->willReturnSelf();
-        $this->abstractDbMock->expects($this->exactly(2))
+        $this->abstractDbMock->expects($this->once())
             ->method('addCommitCallback')
             ->willReturnCallback(function ($function) {
                 return $function();
@@ -402,10 +381,12 @@ class CreateTest extends TestCase
         $this->processor->run($this->data);
     }
 
+    /**
+     * @expectedException \Magento\Framework\Exception\RuntimeException
+     * @expectedExceptionMessage Some error
+     */
     public function testRunWithException()
     {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Some error');
         $data = [
             'websites' => [],
             'groups' => [],
