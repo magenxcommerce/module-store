@@ -1,0 +1,39 @@
+{
+    "name": "magenxcommerce/module-store",
+    "description": "N/A",
+    "config": {
+        "sort-packages": true
+    },
+    "require": {
+        "php": "~7.3.0||~7.4.0",
+        "magenxcommerce/framework": "103.0.*",
+        "magenxcommerce/module-catalog": "104.0.*",
+        "magenxcommerce/module-config": "101.2.*",
+        "magenxcommerce/module-directory": "100.4.*",
+        "magenxcommerce/module-media-storage": "100.4.*",
+        "magenxcommerce/module-ui": "101.2.*",
+        "magenxcommerce/module-customer": "103.0.*",
+        "magenxcommerce/module-authorization": "100.4.*",
+        "magenxcommerce/module-backend": "102.0.*"
+    },
+    "suggest": {
+        "magenxcommerce/module-deploy": "100.4.*"
+    },
+    "type": "magento2-module",
+    "license": [
+        "OSL-3.0",
+        "AFL-3.0"
+    ],
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Magento\\Store\\": ""
+        }
+    },
+    "version": "101.1.0",
+    "replace": {
+        "magento/module-store": "*"
+    }
+}
